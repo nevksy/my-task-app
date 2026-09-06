@@ -30,6 +30,9 @@ export function useNotes() {
   const query = useQuery({
     queryKey: NOTES_KEY,
     queryFn: async (): Promise<Note[]> => {
+      // See useTasks: gate on session init so the first post-sign-in fetch
+      // isn't sent before the access token is ready.
+      await supabase.auth.getSession();
       const { data, error } = await supabase
         .from('notes')
         .select('*')

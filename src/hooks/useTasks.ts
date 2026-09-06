@@ -38,6 +38,10 @@ export function useTasks() {
   const query = useQuery({
     queryKey: TASKS_KEY,
     queryFn: async (): Promise<Task[]> => {
+      // Wait for supabase-js to finish initializing (incl. the OAuth code
+      // exchange on the post-sign-in render) so the request carries the
+      // access token rather than racing it and getting a 401.
+      await supabase.auth.getSession();
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
