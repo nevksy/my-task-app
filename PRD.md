@@ -41,7 +41,19 @@ Behaviour:
 - Each note carries a stable unique id and a creation timestamp.
 - Notes are ordered newest-first.
 
-### 2.3 Search Bar
+### 2.3 Task Tags
+
+- Each task may carry **one optional tag** from a fixed set: `Work`,
+  `Personal`, `Urgent`. A task can also be untagged.
+- The tag is set when adding a task and can be changed on an existing task.
+- A single-select **tag filter** above the task list narrows the list to one
+  tag. Selecting "All" (or re-selecting the active tag) clears the filter.
+- The tag filter and the search bar combine with **AND** — a task must satisfy
+  both. The tag filter affects only the task list, not notes.
+- Tags are visually distinguishable at a glance (colour + always-visible
+  label), and their colours do not collide with the priority colours.
+
+### 2.4 Search Bar
 
 - A single live filter input that searches **tasks and notes simultaneously**.
 - Filtering is case-insensitive substring matching against task titles and note
@@ -51,14 +63,14 @@ Behaviour:
 - When a query matches nothing in a section, that section shows an empty state
   rather than disappearing.
 
-### 2.4 Persistence
+### 2.5 Persistence
 
 - All tasks and notes are persisted to the browser's `localStorage`.
 - State is written on every mutation (add, toggle, delete).
 - State is rehydrated on app load; a page refresh never loses data.
 - Malformed or absent stored data falls back to an empty state without crashing.
 
-### 2.5 Design
+### 2.6 Design
 
 - Modern, minimalist interface built with **Tailwind CSS**.
 - Clear light/dark contrast; the layout must remain legible in both.
@@ -98,12 +110,15 @@ The following are **out of scope** and must not be built:
 ```ts
 type Priority = 'high' | 'medium' | 'low';
 
+type Tag = 'work' | 'personal' | 'urgent';
+
 interface Task {
   id: string;
   title: string;
   priority: Priority;
   completed: boolean;
   createdAt: number; // epoch ms
+  tag?: Tag; // optional; undefined means untagged
 }
 
 interface Note {
@@ -133,3 +148,6 @@ Suggested `localStorage` keys: `taskapp.tasks`, `taskapp.notes`.
 7. The app renders correctly and readably at both mobile (~375px) and desktop
    (~1280px) widths.
 8. No network requests are made to any external service at runtime.
+9. A task can be given or re-assigned a tag; selecting a tag in the filter
+   narrows the task list to that tag, combines with the search text (AND), and
+   the assigned tags survive a page refresh.
