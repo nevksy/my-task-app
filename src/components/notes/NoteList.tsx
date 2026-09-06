@@ -6,10 +6,20 @@ interface NoteListProps {
   notes: Note[];
   hasAnyNotes: boolean;
   isSearching: boolean;
+  isLoading: boolean;
+  isError: boolean;
   onDelete: (id: string) => void;
 }
 
-export function NoteList({ notes, hasAnyNotes, isSearching, onDelete }: NoteListProps) {
+export function NoteList({ notes, hasAnyNotes, isSearching, isLoading, isError, onDelete }: NoteListProps) {
+  if (isError) {
+    return <EmptyState message="Couldn't load your notes. Refresh to try again." />;
+  }
+
+  if (isLoading) {
+    return <EmptyState message="Loading notes…" />;
+  }
+
   if (notes.length === 0) {
     return (
       <EmptyState

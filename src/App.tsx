@@ -1,5 +1,9 @@
-import { ListTodo, StickyNote } from 'lucide-react';
+import { Loader2, ListTodo, StickyNote } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { SignInScreen } from './auth/SignInScreen';
+import { useAuth } from './auth/useAuth';
+import { useMigrateLocalData } from './auth/useMigrateLocalData';
+import { UserMenu } from './auth/UserMenu';
 import { NoteForm } from './components/notes/NoteForm';
 import { NoteList } from './components/notes/NoteList';
 import { SearchBar } from './components/SearchBar';
@@ -12,8 +16,27 @@ import type { Tag } from './types';
 import { matchesQuery } from './utils/search';
 
 function App() {
-  const { tasks, addTask, toggleTask, setTaskTag, deleteTask } = useTasks();
-  const { notes, addNote, deleteNote } = useNotes();
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-gray-50 text-gray-400 dark:bg-gray-950">
+        <Loader2 className="size-6 animate-spin" aria-label="Loading" />
+      </div>
+    );
+  }
+
+  if (!session) return <SignInScreen />;
+
+  return <TaskNoteApp />;
+}
+
+function TaskNoteApp() {
+  useMigrateLocalData();
+
+  const { tasks, addTask, toggleTask, setTaskTag, deleteTask, isLoading: tasksLoading, isError: tasksError } =
+    useTasks();
+  const { notes, addNote, deleteNote, isLoading: notesLoading, isError: notesError } = useNotes();
   const [query, setQuery] = useState('');
   const [tagFilter, setTagFilter] = useState<Tag | null>(null);
 
@@ -38,7 +61,10 @@ function App() {
     <div className="min-h-svh bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-8 sm:py-12">
         <header className="flex flex-col gap-4">
-          <h1 className="text-2xl font-semibold tracking-tight">Task &amp; Note Manager</h1>
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight">Task &amp; Note Manager</h1>
+            <UserMenu />
+          </div>
           <SearchBar value={query} onChange={setQuery} />
         </header>
 
@@ -54,6 +80,8 @@ function App() {
               tasks={filteredTasks}
               hasAnyTasks={tasks.length > 0}
               isFiltering={isFilteringTasks}
+              isLoading={tasksLoading}
+              isError={tasksError}
               onToggle={toggleTask}
               onSetTag={setTaskTag}
               onDelete={deleteTask}
@@ -70,6 +98,8 @@ function App() {
               notes={filteredNotes}
               hasAnyNotes={notes.length > 0}
               isSearching={isSearching}
+              isLoading={notesLoading}
+              isError={notesError}
               onDelete={deleteNote}
             />
           </section>

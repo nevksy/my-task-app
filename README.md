@@ -1,32 +1,68 @@
-# React + TypeScript + Vite
+# Task & Note Manager
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A personal task and quick-note app. React + Vite + TypeScript + Tailwind, with
+Google sign-in and per-user data stored in Supabase (Postgres + Row Level
+Security).
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node 20+
+- A [Supabase](https://supabase.com) project
+- A Google Cloud OAuth 2.0 **Web** client
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. Supabase project
 
-## Expanding the Oxlint configuration
+Create a project (or add the Supabase integration from the Vercel Marketplace).
+From **Project Settings → API** note the **Project URL** and the **`anon` /
+publishable** key.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+### 2. Database schema
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+In the Supabase **SQL Editor**, run [`supabase/schema.sql`](supabase/schema.sql).
+It creates the `tasks` and `notes` tables and their RLS policies. It's
+re-runnable.
+
+### 3. Google OAuth
+
+1. In [Google Cloud Console](https://console.cloud.google.com) → **APIs &
+   Services → Credentials** → create an **OAuth client ID** (Web application).
+2. **Authorized redirect URIs**: `https://<project-ref>.supabase.co/auth/v1/callback`
+3. **Authorized JavaScript origins**: `http://localhost:5173` and your deployed
+   origin(s).
+4. In the Supabase dashboard → **Authentication → Providers → Google**: enable
+   it and paste the client ID + secret.
+5. Supabase → **Authentication → URL Configuration**: set the Site URL and add
+   `http://localhost:5173` (plus deployed/preview URLs) to **Redirect URLs**.
+
+### 4. Environment variables
+
+```bash
+cp .env.example .env.local
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Both are safe to
+expose in client code; RLS protects the data.
+
+### 5. Run
+
+```bash
+npm install
+npm run dev
+```
+
+## Scripts
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Vite dev server |
+| `npm run build` | Type-check + production build |
+| `npm run lint` | oxlint |
+| `npm run preview` | Serve the production build locally |
+
+## Notes
+
+- Any tasks/notes left in `localStorage` by an earlier (offline) version are
+  imported into your account once, on first sign-in.
+- The app requires connectivity — there is no offline mode.

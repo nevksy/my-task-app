@@ -1,11 +1,37 @@
 # Architecture Plan — Task & Note Manager
 
-Implementation plan for the features in `PRD.md`. No code changes yet — this is
-the design to build against.
+> **Status:** §§3–9 below describe the original **offline, `localStorage`-only**
+> MVP and are kept for history. The app has since added **Google SSO + a
+> Supabase Postgres backend** — see §0 for what changed. `PRD.md` and
+> `CLAUDE.md` are the current source of truth.
 
 ---
 
-## 1. Guiding constraints (from PRD.md / CLAUDE.md)
+## 0. Auth + backend (current architecture)
+
+- **Auth** — Supabase Auth, Google OAuth only. `src/lib/supabase.ts` (client
+  singleton), `src/auth/` (`AuthProvider`, `context.ts`, `useAuth`,
+  `SignInScreen`, `UserMenu`, `useMigrateLocalData`). `src/App.tsx` gates the
+  UI: no session → `<SignInScreen>`.
+- **Data** — Supabase Postgres, `public.tasks` / `public.notes`, one row per
+  item, `user_id`-scoped. Schema + RLS in `supabase/schema.sql`. The browser
+  calls Supabase's REST endpoint directly; **no custom API server**.
+- **Authorization** — Row Level Security (`auth.uid() = user_id`) is the only
+  isolation boundary. The client key grants nothing beyond the policies.
+- **Server state** — `@tanstack/react-query`. `src/hooks/useTasks.ts` /
+  `useNotes.ts` were rewritten from `localStorage` state to a `useQuery` +
+  optimistic `useMutation` pattern, keeping their exported action
+  names/signatures so components were mostly untouched.
+- **Migration** — `src/lib/migrateLocalData.ts` imports any pre-auth
+  `localStorage` tasks/notes into the account once, guarded by the
+  `taskapp.migrated` flag.
+- **Env** — `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (`.env.example`).
+- **Trade-off** — the app now requires connectivity; the offline guarantees in
+  §§3–4 no longer hold.
+
+---
+
+## 1. Guiding constraints (original MVP — superseded by §0)
 
 - No backend, no auth, no network calls — `localStorage` is the only store.
 - Small, single-user app → **no external state library** (Redux/Zustand/Jotai
@@ -22,41 +48,45 @@ the design to build against.
 
 ---
 
-## 2. File/folder structure
+## 2. File/folder structure (current)
 
 ```
 src/
-  types.ts                   Task, Note, Priority types + type guards
+  env.d.ts                   ImportMetaEnv typing for VITE_SUPABASE_*
+  types.ts                   Task/Note/Priority/Tag types + guards (guards now
+                             used only by the migration)
   lib/
-    storage.ts                Generic safe localStorage get/set + storage keys
+    supabase.ts               Supabase client singleton
+    storage.ts                readJSON + storage keys (migration only)
+    migrateLocalData.ts       One-time localStorage → Supabase import
+  auth/
+    context.ts                AuthContext + AuthContextValue
+    AuthProvider.tsx          Owns the Supabase session
+    useAuth.ts                Context consumer hook
+    useMigrateLocalData.ts    Runs the migration once, post-sign-in
+    SignInScreen.tsx          Full-page "Continue with Google" gate
+    UserMenu.tsx              Header avatar + sign out
   hooks/
-    useLocalStorageState.ts   Generic hook: React state synced to localStorage
-    useTasks.ts                Task state + add/toggle/delete actions
-    useNotes.ts                Note state + add/delete actions
+    useTasks.ts               useQuery + optimistic useMutation over supabase
+    useNotes.ts               same, newest-first
   utils/
-    id.ts                      generateId()
-    text.ts                    sanitizeText() / isBlank() helpers
-    search.ts                  matchesQuery() substring helper
+    id.ts                     generateId() — now only for optimistic temp ids
+    text.ts                   sanitizeText() / isBlank()
+    search.ts                 matchesQuery() substring helper
   components/
-    SearchBar.tsx
-    EmptyState.tsx
-    tasks/
-      TaskForm.tsx
-      TaskList.tsx
-      TaskItem.tsx
-      PriorityBadge.tsx
-    notes/
-      NoteForm.tsx
-      NoteList.tsx
-      NoteItem.tsx
-  App.tsx                      Owns tasks/notes/search state, computes filtered views
-  main.tsx
+    SearchBar.tsx  EmptyState.tsx
+    tasks/  TaskForm  TaskList  TaskItem  PriorityBadge  TagBadge  TagFilter  tags.ts
+    notes/  NoteForm  NoteList  NoteItem
+  App.tsx                     Auth gate + <TaskNoteApp> (search/filter state)
+  main.tsx                    QueryClientProvider > AuthProvider > App
   index.css
+
+supabase/
+  schema.sql                  Tables + RLS policies (source of truth)
 ```
 
-Rationale: one concern per file, all under ~50–80 lines, no barrel files
-(unneeded at this size), no context provider — `App.tsx` is small enough to
-own state and pass props down directly.
+`useLocalStorageState.ts` was removed. `App.tsx` gained an auth gate but still
+prop-drills into two sibling sections — no state library.
 
 ---
 

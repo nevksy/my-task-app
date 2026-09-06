@@ -3,12 +3,14 @@ export const STORAGE_KEYS = {
   notes: 'taskapp.notes',
 } as const;
 
+/** Set once the one-time localStorage → Supabase migration has run. */
+export const MIGRATED_KEY = 'taskapp.migrated';
+
 /**
  * Reads and JSON-parses a localStorage value. Falls back to `fallback` when
  * the key is absent, the stored value isn't valid JSON, or localStorage
- * itself is unavailable (e.g. disabled, or thrown in some private-browsing
- * modes) — the app should always be able to start with an empty state
- * rather than crash on a corrupted or missing value.
+ * itself is unavailable. Only used now by the one-time migration in
+ * `migrateLocalData.ts` — the app's live data lives in Supabase.
  */
 export function readJSON<T>(key: string, fallback: T): T {
   try {
@@ -18,19 +20,5 @@ export function readJSON<T>(key: string, fallback: T): T {
   } catch (error) {
     console.warn(`Failed to read "${key}" from localStorage; using fallback.`, error);
     return fallback;
-  }
-}
-
-/**
- * JSON-stringifies and writes a value to localStorage. Swallows failures
- * (quota exceeded, storage disabled/full, private-mode restrictions) so a
- * write failure never crashes the app — state still updates in memory for
- * the rest of the session even if it can't be persisted.
- */
-export function writeJSON<T>(key: string, value: T): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.warn(`Failed to write "${key}" to localStorage.`, error);
   }
 }
