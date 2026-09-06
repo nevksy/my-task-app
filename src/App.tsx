@@ -3,22 +3,31 @@ import { useMemo, useState } from 'react';
 import { NoteForm } from './components/notes/NoteForm';
 import { NoteList } from './components/notes/NoteList';
 import { SearchBar } from './components/SearchBar';
+import { TagFilter } from './components/tasks/TagFilter';
 import { TaskForm } from './components/tasks/TaskForm';
 import { TaskList } from './components/tasks/TaskList';
 import { useNotes } from './hooks/useNotes';
 import { useTasks } from './hooks/useTasks';
+import type { Tag } from './types';
 import { matchesQuery } from './utils/search';
 
 function App() {
-  const { tasks, addTask, toggleTask, deleteTask } = useTasks();
+  const { tasks, addTask, toggleTask, setTaskTag, deleteTask } = useTasks();
   const { notes, addNote, deleteNote } = useNotes();
   const [query, setQuery] = useState('');
+  const [tagFilter, setTagFilter] = useState<Tag | null>(null);
 
   const isSearching = query.trim() !== '';
+  const isFilteringTasks = isSearching || tagFilter !== null;
 
   const filteredTasks = useMemo(
-    () => (isSearching ? tasks.filter((task) => matchesQuery(task.title, query)) : tasks),
-    [tasks, query, isSearching],
+    () =>
+      tasks.filter(
+        (task) =>
+          (!isSearching || matchesQuery(task.title, query)) &&
+          (tagFilter === null || task.tag === tagFilter),
+      ),
+    [tasks, query, isSearching, tagFilter],
   );
   const filteredNotes = useMemo(
     () => (isSearching ? notes.filter((note) => matchesQuery(note.content, query)) : notes),
@@ -40,11 +49,13 @@ function App() {
               Tasks
             </h2>
             <TaskForm onAdd={addTask} />
+            <TagFilter selected={tagFilter} onChange={setTagFilter} />
             <TaskList
               tasks={filteredTasks}
               hasAnyTasks={tasks.length > 0}
-              isSearching={isSearching}
+              isFiltering={isFilteringTasks}
               onToggle={toggleTask}
+              onSetTag={setTaskTag}
               onDelete={deleteTask}
             />
           </section>

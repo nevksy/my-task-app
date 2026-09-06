@@ -1,11 +1,14 @@
 export type Priority = 'high' | 'medium' | 'low';
 
+export type Tag = 'work' | 'personal' | 'urgent';
+
 export interface Task {
   id: string;
   title: string;
   priority: Priority;
   completed: boolean;
   createdAt: number; // epoch ms
+  tag?: Tag; // optional; undefined means untagged
 }
 
 export interface Note {
@@ -18,6 +21,12 @@ const PRIORITIES: readonly Priority[] = ['high', 'medium', 'low'];
 
 function isPriority(value: unknown): value is Priority {
   return typeof value === 'string' && (PRIORITIES as readonly string[]).includes(value);
+}
+
+export const TAGS: readonly Tag[] = ['work', 'personal', 'urgent'];
+
+export function isTag(value: unknown): value is Tag {
+  return typeof value === 'string' && (TAGS as readonly string[]).includes(value);
 }
 
 /**
@@ -33,7 +42,8 @@ export function isTask(value: unknown): value is Task {
     typeof v.title === 'string' &&
     isPriority(v.priority) &&
     typeof v.completed === 'boolean' &&
-    typeof v.createdAt === 'number'
+    typeof v.createdAt === 'number' &&
+    (v.tag === undefined || isTag(v.tag))
   );
 }
 

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { STORAGE_KEYS } from '../lib/storage';
-import { isTask, type Priority, type Task } from '../types';
+import { isTask, type Priority, type Tag, type Task } from '../types';
 import { generateId } from '../utils/id';
 import { isBlank, sanitizeText } from '../utils/text';
 import { useLocalStorageState } from './useLocalStorageState';
@@ -21,7 +21,7 @@ export function useTasks() {
   // hand-edited storage blob might contain, instead of crashing on render.
   const safeTasks = useMemo(() => tasks.filter(isTask), [tasks]);
 
-  function addTask(title: string, priority: Priority = 'medium') {
+  function addTask(title: string, priority: Priority = 'medium', tag?: Tag) {
     const clean = sanitizeText(title);
     if (isBlank(clean)) return; // reject empty/whitespace-only titles
     setTasks((prev) => [
@@ -32,6 +32,7 @@ export function useTasks() {
         priority,
         completed: false,
         createdAt: Date.now(),
+        ...(tag ? { tag } : {}),
       },
     ]);
   }
@@ -42,9 +43,13 @@ export function useTasks() {
     );
   }
 
+  function setTaskTag(id: string, tag: Tag | undefined) {
+    setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, tag } : task)));
+  }
+
   function deleteTask(id: string) {
     setTasks((prev) => prev.filter((task) => task.id !== id));
   }
 
-  return { tasks: safeTasks, addTask, toggleTask, deleteTask };
+  return { tasks: safeTasks, addTask, toggleTask, setTaskTag, deleteTask };
 }
